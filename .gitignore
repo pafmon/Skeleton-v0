@@ -2,3 +2,13 @@ node_modules/
 dist/
 bash.exe.stackdump
 Z-Anatomy.zip
+bones.zip
+*.blend
+*.blend1
+*.ply
+*.zip
+CLAUDE.md
+LICENSE
+Sel_Area.glb
+webgl/
+.github/
