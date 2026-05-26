@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { initEditor } from './editor/editor.js';
+import { initQuiz } from './quiz/quiz.js';
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x222222);
@@ -20,35 +22,30 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 1);
 dirLight.position.set(5, 10, 7.5);
 scene.add(dirLight);
 
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-let modelMeshes = [];
-
 const loader = new GLTFLoader();
-loader.load('./model.glb', (gltf) => {
+loader.load('./arm.glb', (gltf) => {
   scene.add(gltf.scene);
 
+  let boneMesh = null;
   gltf.scene.traverse((child) => {
-    if (child.isMesh) {
-      modelMeshes.push(child);
-    }
+    if (child.isMesh && !child.name.startsWith('area_')) boneMesh = child;
   });
 
-  console.log('Meshes loaded:', modelMeshes.map(m => m.name));
+  const box = new THREE.Box3().setFromObject(gltf.scene);
+  const center = box.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(...box.getSize(new THREE.Vector3()).toArray());
+  const scale = 2 / maxDim;
+  gltf.scene.scale.setScalar(scale);
+  gltf.scene.position.sub(center.multiplyScalar(scale));
+  controls.target.set(0, 0, 0);
+  controls.update();
+
+  if (boneMesh) {
+    initEditor(scene, camera, renderer, boneMesh, controls);
+    initQuiz(scene, camera, renderer, boneMesh);
+  }
 }, undefined, (error) => {
   console.error('Error loading model:', error);
-});
-
-renderer.domElement.addEventListener('click', (event) => {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(modelMeshes);
-
-  if (intersects.length > 0) {
-    console.log('Clicked:', intersects[0].object.name);
-  }
 });
 
 window.addEventListener('resize', () => {
