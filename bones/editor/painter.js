@@ -17,16 +17,18 @@ const PALETTE = [
 let colorCounter = 0;
 let overlayMesh = null;
 let colorAttr = null;
+let indexAttr = null;
 let _boneMesh = null;
 const faceData = {}; // { name: Set<faceIndex> } — internal, not in store
 
 export function init(boneMesh) {
   _boneMesh = boneMesh;
 
-  const geom = boneMesh.geometry.toNonIndexed();
+  const geom = boneMesh.geometry.clone();
   const colors = new Float32Array(geom.attributes.position.count * 3);
   geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   colorAttr = geom.attributes.color;
+  indexAttr = geom.index;
 
   overlayMesh = new THREE.Mesh(geom, new THREE.MeshBasicMaterial({
     vertexColors: true,
@@ -37,6 +39,22 @@ export function init(boneMesh) {
   }));
   overlayMesh.visible = false;
   boneMesh.add(overlayMesh);
+}
+
+function paintVertsForFace(fi, r, g, b) {
+  for (let v = 0; v < 3; v++) {
+    const vi = indexAttr.getX(fi * 3 + v);
+    colorAttr.setXYZ(vi, r, g, b);
+  }
+}
+
+function repaintAll() {
+  colorAttr.array.fill(0);
+  for (const [name, zoneData] of Object.entries(get(zones))) {
+    const [r, g, b] = PALETTE[zoneData.colorIdx % PALETTE.length];
+    for (const fi of faceData[name] ?? []) paintVertsForFace(fi, r, g, b);
+  }
+  colorAttr.needsUpdate = true;
 }
 
 export function getBoneMesh() { return _boneMesh; }
@@ -64,8 +82,7 @@ export function paintFace(fi) {
 
   faceData[zone].add(fi);
   const [r, g, b] = PALETTE[get(zones)[zone].colorIdx % PALETTE.length];
-  const base = fi * 3;
-  for (let v = 0; v < 3; v++) colorAttr.setXYZ(base + v, r, g, b);
+  paintVertsForFace(fi, r, g, b);
   colorAttr.needsUpdate = true;
 
   zones.update(z => ({ ...z, [zone]: { ...z[zone], faceCount: faceData[zone].size } }));
@@ -74,12 +91,8 @@ export function paintFace(fi) {
 
 export function clearZone(name) {
   if (!faceData[name]) return;
-  for (const fi of faceData[name]) {
-    const base = fi * 3;
-    for (let v = 0; v < 3; v++) colorAttr.setXYZ(base + v, 0, 0, 0);
-  }
   faceData[name].clear();
-  colorAttr.needsUpdate = true;
+  repaintAll();
   zones.update(z => ({ ...z, [name]: { ...z[name], faceCount: 0 } }));
 }
 
@@ -98,15 +111,10 @@ export function loadZones(data) {
     colorCounter = Math.max(colorCounter, colorIdx + 1);
 
     faceData[name] = new Set(indices);
-    const [r, g, b] = PALETTE[colorIdx % PALETTE.length];
-    for (const fi of indices) {
-      const base = fi * 3;
-      for (let v = 0; v < 3; v++) colorAttr.setXYZ(base + v, r, g, b);
-    }
     zones.update(z => ({ ...z, [name]: { faceCount: indices.length, colorIdx } }));
   }
   if (Object.keys(data).length) {
-    colorAttr.needsUpdate = true;
+    repaintAll();
     setOverlayVisible(true);
   }
 }

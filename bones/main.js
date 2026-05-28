@@ -17,10 +17,13 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1));
-const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+scene.add(new THREE.AmbientLight(0xffffff, 1.8));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.4);
 dirLight.position.set(5, 10, 7.5);
 scene.add(dirLight);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+fillLight.position.set(-5, -5, -7.5);
+scene.add(fillLight);
 
 const loader = new GLTFLoader();
 loader.load(import.meta.env.BASE_URL + 'arm.glb', (gltf) => {
