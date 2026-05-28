@@ -8,6 +8,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: Number(process.env.PORT) || 5173,
     strictPort: true,
+    allowedHosts: ['skeleton-v0.onrender.com']
   },
   base: '/Squeleton/',
   plugins: [
